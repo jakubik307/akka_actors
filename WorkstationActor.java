@@ -31,20 +31,22 @@ public abstract class WorkstationActor extends AbstractActor {
 
     static Props props (ActorRef warehouse, ActorRef nextWorkstation, Map<Product, Double> requiredResources, Pair<Product, Double> outputResources, double failureProbability, int numSlots, int processingTime) {
         return Props.create(WorkstationActor.class, () -> new WorkstationActor(warehouse, nextWorkstation, requiredResources, outputResources, failureProbability, numSlots, processingTime) {
-            @Override
-            public Receive createReceive() {
-                return null;
-            }
         });
     }
 
     @Override
     public Receive createReceive() {
-        return receiveBuilder().match(Pair.class, this::handleTransfer).build();
+        return receiveBuilder().match(Pair.class, this::handleTransfer)
+                .match(StartMessage.class, this::handleStart)
+                .build();
     }
 
-    private void handleTransfer(Pair<Product, Double> products) {
-        currentResources.put(products.first(), currentResources.get(products.first()) + products.second());
+    protected void handleTransfer(Pair<Product, Double> products) {
+        if (currentResources.containsKey(products.first())) {
+            currentResources.put(products.first(), currentResources.get(products.first()) + products.second());
+        } else {
+            currentResources.put(products.first(), products.second());
+        }
 
         // If there are free slots and enough resources, start processing
         if (currentSlots > 0) {
@@ -52,7 +54,6 @@ public abstract class WorkstationActor extends AbstractActor {
             // if there are not enough resources, ask the warehouse for them and wait for the response then check again
             if (!hasEnoughResources()) {
                 warehouse.tell(new AskMessage(requiredResources), getSelf());
-                return;
             }
 
             // If there are enough resources, start processing
@@ -80,7 +81,7 @@ public abstract class WorkstationActor extends AbstractActor {
         for (Map.Entry<Product, Double> entry : requiredResources.entrySet()) {
             Product product = entry.getKey();
             Double amount = entry.getValue();
-            if (currentResources.get(product) < amount) {
+            if (!currentResources.containsKey(product) || currentResources.get(product) < amount) {
                 return false;
             }
         }
@@ -96,11 +97,17 @@ public abstract class WorkstationActor extends AbstractActor {
             e.printStackTrace();
         }
 
+        System.out.println("Processed " + requiredResources + " at " + getClass().getName() + " at " + System.currentTimeMillis() + " ms");
+
         currentSlots++;
     }
 
     private void sendToNextWorkstation(Pair<Product, Double> products) {
         nextWorkstation.tell(products, getSelf());
-        System.out.println("Sent " + products.second() + " " + products.first() + " to " + nextWorkstation + "from" + getClass() + " at " + System.currentTimeMillis() + " ms");
+        System.out.println("Sent " + products.second() + " " + products.first() + " to " + nextWorkstation.getClass().getName() + "from" + getClass().getName() + " at " + System.currentTimeMillis() + " ms");
+    }
+
+    private void handleStart(StartMessage startMessage) {
+        handleTransfer(new Pair<>(Product.grapes, 0.0));
     }
 }

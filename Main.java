@@ -14,7 +14,7 @@ public class Main {
         ActorRef warehouse = production.actorOf(Warehouse.props(Map.of(
                 Product.grapes, 1000.0,
                 Product.bottles, 1000.0,
-                Product.grape_juice, 1000.0,
+                Product.sugar, 1000.0,
                 Product.bottle_of_wine, 1000.0
         )), "warehouse");
 
@@ -37,7 +37,15 @@ public class Main {
                 Product.grapes, 15.0
         ), Pair.create(Product.grape_juice, 10.0), 0.0, 1, 720), "press");
 
-        press.tell(new Pair<>(Product.grapes, 15.0), ActorRef.noSender());
+        while (true) {
+            press.tell(new StartMessage(), ActorRef.noSender());
+            try {
+                Thread.sleep(TIME_SCALE);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
+
 

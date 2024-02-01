@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Warehouse extends AbstractActor {
-    private final Map<Product, Double> resources;
+    private Map<Product, Double> resources;
 
     public Warehouse(Map<Product, Double> resources) {
         this.resources = resources;
@@ -32,7 +32,7 @@ public class Warehouse extends AbstractActor {
             Product product = entry.getKey();
             Double amount = entry.getValue();
             // If there are enough resources, send them else send what you have
-            if (resources.get(product) >= amount) {
+            if (resources.containsKey(product) && resources.get(product) >= amount) {
                 resourcesToSend.put(product, amount);
             } else {
                 resourcesToSend.put(product, resources.get(product));
@@ -44,7 +44,11 @@ public class Warehouse extends AbstractActor {
         for (Map.Entry<Product, Double> entry : resourcesToSend.entrySet()) {
             Product product = entry.getKey();
             Double amount = entry.getValue();
-            resources.put(product, resources.get(product) - amount);
+            Map<Product, Double> updatedResources = new HashMap<>(resources);
+            if (updatedResources.containsKey(product)) {
+                updatedResources.put(product, updatedResources.get(product) - amount);
+            }
+            resources = updatedResources;  // Update the reference to the new map
         }
 
         System.out.println("Sending resources from warehouse to " + getSender().path().name() + ": " + resourcesToSend + " at " + System.currentTimeMillis());
