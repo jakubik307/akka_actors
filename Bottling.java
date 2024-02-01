@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class Bottling extends WorkstationActor {
 
-    public Bottling(ActorRef warehouse, ActorRef nextWorkstation, Map<Product, Integer> requiredResources, Map<Product, Integer> currentResources, Pair<Product, Integer> outputResources, double failureProbability, int numSlots, int processingTime) {
-        super(warehouse, nextWorkstation, requiredResources, currentResources, outputResources, failureProbability, numSlots, processingTime);
+    public Bottling(ActorRef warehouse, ActorRef nextWorkstation, Map<Product, Double> requiredResources, Pair<Product, Double> outputResources, double failureProbability, int numSlots, int processingTime) {
+        super(warehouse, nextWorkstation, requiredResources, outputResources, failureProbability, numSlots, processingTime);
     }
 }

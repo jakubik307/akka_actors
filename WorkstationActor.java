@@ -5,31 +5,37 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.japi.Pair;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public abstract class WorkstationActor extends AbstractActor {
     protected ActorRef warehouse;
     protected ActorRef nextWorkstation;
-    protected Map<Product, Integer> requiredResources;
-    protected Map<Product, Integer> currentResources;
-    protected Pair<Product, Integer> outputResources;
+    protected Map<Product, Double> requiredResources;
+    protected Map<Product, Double> currentResources;
+    protected Pair<Product, Double> outputResources;
     protected double failureProbability;
     protected int currentSlots;
     protected int processingTime;
 
-    public WorkstationActor(ActorRef warehouse, ActorRef nextWorkstation, Map<Product, Integer> requiredResources, Map<Product, Integer> currentResources, Pair<Product, Integer> outputResources, double failureProbability, int numSlots, int processingTime) {
+    public WorkstationActor(ActorRef warehouse, ActorRef nextWorkstation, Map<Product, Double> requiredResources, Pair<Product, Double> outputResources, double failureProbability, int numSlots, int processingTime) {
         this.warehouse = warehouse;
         this.nextWorkstation = nextWorkstation;
         this.requiredResources = requiredResources;
-        this.currentResources = currentResources;
+        this.currentResources = new HashMap<>();
         this.outputResources = outputResources;
         this.failureProbability = failureProbability;
         this.currentSlots = numSlots;
         this.processingTime = processingTime / Main.TIME_SCALE;
     }
 
-    static Props props(Class<? extends WorkstationActor> workstationClass) {
-        return Props.create(workstationClass);
+    static Props props (ActorRef warehouse, ActorRef nextWorkstation, Map<Product, Double> requiredResources, Pair<Product, Double> outputResources, double failureProbability, int numSlots, int processingTime) {
+        return Props.create(WorkstationActor.class, () -> new WorkstationActor(warehouse, nextWorkstation, requiredResources, outputResources, failureProbability, numSlots, processingTime) {
+            @Override
+            public Receive createReceive() {
+                return null;
+            }
+        });
     }
 
     @Override
@@ -37,7 +43,7 @@ public abstract class WorkstationActor extends AbstractActor {
         return receiveBuilder().match(Pair.class, this::handleTransfer).build();
     }
 
-    private void handleTransfer(Pair<Product, Integer> products) {
+    private void handleTransfer(Pair<Product, Double> products) {
         currentResources.put(products.first(), currentResources.get(products.first()) + products.second());
 
         // If there are free slots and enough resources, start processing
@@ -51,9 +57,9 @@ public abstract class WorkstationActor extends AbstractActor {
 
             // If there are enough resources, start processing
             if (hasEnoughResources()) {
-                for (Map.Entry<Product, Integer> entry : requiredResources.entrySet()) {
+                for (Map.Entry<Product, Double> entry : requiredResources.entrySet()) {
                     Product product = entry.getKey();
-                    Integer amount = entry.getValue();
+                    Double amount = entry.getValue();
                     currentResources.put(product, currentResources.get(product) - amount);
                 }
             }
@@ -71,9 +77,9 @@ public abstract class WorkstationActor extends AbstractActor {
     }
 
     private boolean hasEnoughResources() {
-        for (Map.Entry<Product, Integer> entry : requiredResources.entrySet()) {
+        for (Map.Entry<Product, Double> entry : requiredResources.entrySet()) {
             Product product = entry.getKey();
-            Integer amount = entry.getValue();
+            Double amount = entry.getValue();
             if (currentResources.get(product) < amount) {
                 return false;
             }
@@ -93,7 +99,7 @@ public abstract class WorkstationActor extends AbstractActor {
         currentSlots++;
     }
 
-    private void sendToNextWorkstation(Pair<Product, Integer> products) {
+    private void sendToNextWorkstation(Pair<Product, Double> products) {
         nextWorkstation.tell(products, getSelf());
         System.out.println("Sent " + products.second() + " " + products.first() + " to " + nextWorkstation + "from" + getClass() + " at " + System.currentTimeMillis() + " ms");
     }
