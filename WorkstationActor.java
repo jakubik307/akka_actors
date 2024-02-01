@@ -41,7 +41,22 @@ public abstract class WorkstationActor extends AbstractActor {
         currentResources.put(products.first(), currentResources.get(products.first()) + products.second());
 
         // If there are free slots and enough resources, start processing
-        if (currentSlots > 0 && hasEnoughResources()) {
+        if (currentSlots > 0) {
+
+            // if there are not enough resources, ask the warehouse for them and wait for the response then check again
+            if (!hasEnoughResources()) {
+                warehouse.tell(new AskMessage(requiredResources), getSelf());
+                return;
+            }
+
+            // If there are enough resources, start processing
+            if (hasEnoughResources()) {
+                for (Map.Entry<Product, Integer> entry : requiredResources.entrySet()) {
+                    Product product = entry.getKey();
+                    Integer amount = entry.getValue();
+                    currentResources.put(product, currentResources.get(product) - amount);
+                }
+            }
 
             simulateProcessing();
 
@@ -50,16 +65,17 @@ public abstract class WorkstationActor extends AbstractActor {
             }
 
         } else {
-            // If there are no free slots, send the resources to current resources and wait for the slot to be free
-
+            // If there are no free slots wait for the slot to be free
+            System.out.println("No free slots at " + getClass() + " at " + System.currentTimeMillis() + " ms");
         }
     }
 
     private boolean hasEnoughResources() {
         for (Map.Entry<Product, Integer> entry : requiredResources.entrySet()) {
-            if (currentResources.get(entry.getKey()) < entry.getValue()) {
-                AskMessage askMessage = new AskMessage(requiredResources);
-                warehouse.tell(askMessage, getSelf());
+            Product product = entry.getKey();
+            Integer amount = entry.getValue();
+            if (currentResources.get(product) < amount) {
+                return false;
             }
         }
         return true;
@@ -79,6 +95,6 @@ public abstract class WorkstationActor extends AbstractActor {
 
     private void sendToNextWorkstation(Pair<Product, Integer> products) {
         nextWorkstation.tell(products, getSelf());
-        System.out.println("Sent " + products.second() + " " + products.first() + " to " + nextWorkstation + "from" + getSelf() + " at " + System.currentTimeMillis() + " ms");
+        System.out.println("Sent " + products.second() + " " + products.first() + " to " + nextWorkstation + "from" + getClass() + " at " + System.currentTimeMillis() + " ms");
     }
 }
